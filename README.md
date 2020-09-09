@@ -10,4 +10,7 @@ https://developer.twitter.com/en/docs/twitter-api/v1/rate-limits
 
 My understanding is that the rate limit on follows is separate from all other actions taken by an account.
 
-If that is correct, you can run the followerScript.py file regardless of your account's other activity for the day.
+If that is correct, you can run the follower scripts regardless of your account's other activity for the day.
+
+However, since either one of them will use up all of your follows for the day, you can only use one.
+
