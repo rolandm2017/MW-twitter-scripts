@@ -26,18 +26,14 @@ database_name = "people_who_retweeted_{}_database.txt".format(target_account)
 
 tweets = api.user_timeline(target_account)
 retweeters = []
-count = 0
 for tweet in tweets:
     print(tweet.text)
     retweets_of_original_tweet = api.retweets(tweet.id)
-    # For each retweet, find the user who retweeted it and their follower count.
-    # Push those values to the Retweeters list
+    # For each retweet...
     for retweet in retweets_of_original_tweet:
-        user_who_retweeted = api.get_user(retweet.user.id)
-        retweeters.append([user_who_retweeted, user_who_retweeted.followers_count])
-        count += 1
-        if count > 4:
-            break
+        # ...get the retweeter and...
+        user_who_retweeted = api.get_user(retweet.user.id).screen_name
+        retweeters.append([user_who_retweeted, retweet.user.followers_count])
 
 for x in retweeters:
     print(x)
