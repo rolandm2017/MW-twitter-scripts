@@ -20,7 +20,8 @@ api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
 
 # Change this name to customize who the script is following!
 target_account = keys[4][:-1]
-msg = "@%s testing a bot, test test, mic check 1 2" % target_account
+input_string = ""  # TODO: fill me in with the custom message
+msg = "@%s %s" % target_account, input_string
 print(target_account)
 
 error_log = "error_log_from_bot.txt"
@@ -29,7 +30,6 @@ error_log = "error_log_from_bot.txt"
 def reply_to_tweet(tweet_id):
     try:
         print("FOO")
-        # FIXME: this is supposed to reply to the tweet, and it does not
         api.update_status(msg, in_reply_to_status_id_str=str(tweet_id))
         return True
     except Exception as e:
@@ -52,3 +52,4 @@ while True:
                 log.write("\n")
     time.sleep(2)
 
+# TODO: figure out how to turn the bot off. Suppose you can just crash the program...
