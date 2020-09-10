@@ -31,28 +31,23 @@ tweets = api.user_timeline(target_account)
 daily_scrape_of_retweeters = []
 for tweet in tweets:
     print(tweet.text)
+    retweets_of_original_tweet = api.retweets(tweet.id, 100)  # retrieves ONLY 100 people who retweeted the tweet
 
-    retweets_of_original_tweet = api.retweets(tweet.id)  # retrieves ONLY 100 people who retweeted the tweet
     # For each retweet...
+    print(len(retweets_of_original_tweet))
     for retweet in retweets_of_original_tweet:
-        now = datetime.now()
-
-        current_time = now.strftime("%d/%m/%Y %H:%M:%S")
-        print("Current Time =", current_time, len(daily_scrape_of_retweeters))
-        # ...get 100 retweeters and...
-        retweeters = api.retweets(retweet.id)
-        print(retweeters)
-        time.sleep(10)
-        for user in retweeters:
-            # originally wrote: id_of_user_who_retweeted = api.get_user(user.id).id LOL
-            daily_scrape_of_retweeters.append({"id": user.id, "follower_count": user.followers_count})
+        # now = datetime.now()
+        # current_time = now.strftime("%d/%m/%Y %H:%M:%S")
+        user = api.get_user(retweet.user.id)
+        print(user.id, user.followers_count)
+        daily_scrape_of_retweeters.append({"id": user.id, "follower_count": user.followers_count})
 
     if len(daily_scrape_of_retweeters) > 995:
         break
 
 # sort retweeters list in place, ordered by most followers to least followers
 sorted_retweeters = sorted(daily_scrape_of_retweeters, key=lambda x: x["follower_count"])
-print(len(retweeters), len(sorted_retweeters))
+print(len(daily_scrape_of_retweeters), len(sorted_retweeters))
 
 if path.exists(database_name):
     # Extract the db from the txt file
@@ -82,7 +77,7 @@ if path.exists(database_name):
     # Put the remaining users into the database
     with open(database_name, "wb") as db:
         for follower in (ACCOUNTS_PER_DAY, len(old_and_new_users_sorted)):
-            pickle.dump(retweeters[follower], db, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump(old_and_new_users_sorted[follower], db, protocol=pickle.HIGHEST_PROTOCOL)
 
 else:
     # Follow the top 395 accounts
