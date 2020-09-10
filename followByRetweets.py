@@ -53,7 +53,7 @@ if path.exists(database_name):
                 split = entry.split(";")
                 users.append({"id": split[0], "follower_count": split[1]})
             except Exception as e:
-                print(str(e))
+                print(str(e), split, ";")
 
     # Add the top 400 of the new accounts to the list from the database so they can compete for spots
     for follower in range(0, ACCOUNTS_PER_DAY):
@@ -73,20 +73,26 @@ if path.exists(database_name):
             break
     follows_per_account = follows / ACCOUNTS_PER_DAY
 
+    # Remove the followed accounts, simplifying the list
+    remaining_accounts = users_sorted[accounts_followed_today:]
+
     # Put the remaining users into the database
     x = 0
     with open(database_name, "w") as db:
-        print("errors detected:", ACCOUNTS_PER_DAY, accounts_followed_today, len(users_sorted))
-        for follower in (accounts_followed_today, len(users_sorted)):
+        print("yayayayayay:", len(remaining_accounts))
+        time.sleep(10)
+        for follower in (0, len(remaining_accounts)):
             # FIXME: IndexError: list index out of range
+            print(follower)
             try:
-                db.write(str(users_sorted[follower]["id"]) + ";" +
-                         str(users_sorted[follower]["follower_count"]))
+                db.write(str(remaining_accounts[follower]["id"]) + ";" +
+                         str(remaining_accounts[follower]["follower_count"]))
                 db.write(",")
             except Exception as e:
                 print("HEY:", e, follower)
+                time.sleep(10)
             x += 1
-    print("look here is x {}, predictably it is the value of {} minus {} which is {}".format(x, users, accounts_followed_today, str(users - accounts_followed_today)))
+    print("look here is x {}, predictably it is the value of {} or smaller".format(x, len(remaining_accounts)))
 
 else:
     # Follow the top 395 accounts
