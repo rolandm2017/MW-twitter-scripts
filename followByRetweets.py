@@ -79,20 +79,20 @@ if path.exists(database_name):
     # Put the remaining users into the database
     x = 0
     with open(database_name, "w") as db:
-        print("yayayayayay:", len(remaining_accounts))
-        time.sleep(10)
-        for follower in (0, len(remaining_accounts)):
+        # print("yayayayayay:", len(remaining_accounts))
+        # time.sleep(10)
+        for follower in range(0, len(remaining_accounts)):
             # FIXME: IndexError: list index out of range
-            print(follower)
+            # print(follower)
+            x += 1
             try:
                 db.write(str(remaining_accounts[follower]["id"]) + ";" +
                          str(remaining_accounts[follower]["follower_count"]))
                 db.write(",")
             except Exception as e:
-                print("HEY:", e, follower)
-                time.sleep(10)
-            x += 1
-    print("look here is x {}, predictably it is the value of {} or smaller".format(x, len(remaining_accounts)))
+                print("error:", e)
+                time.sleep(5)
+    # print("look here is x {}, predictably it is the value of {} or smaller".format(x, len(remaining_accounts)))
 
 else:
     # Follow the top 395 accounts
