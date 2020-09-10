@@ -41,13 +41,20 @@ for tweet in tweets:
         break
 
 # sort retweeters list in place, ordered by most followers to least followers
-sorted_retweeters = sorted(daily_scrape_of_retweeters, key=lambda x: x["follower_count"])
+sorted_retweeters = sorted(daily_scrape_of_retweeters, key=lambda x: x["follower_count"], reverse=True)
 print(len(daily_scrape_of_retweeters), len(sorted_retweeters))
 
 if path.exists(database_name):
     # Extract the db from the txt file
     with open(database_name, "r") as db:
-        users = [{"id": entry.split(";")[0], "follower_count": entry.split(";")[1]} for entry in db.read().split(",")]
+        with_semicolons = db.read().split(",")
+        users = []
+        for entry in with_semicolons:
+            try:
+                split = entry.split(";")
+                users.append({"id": split[0], "follower_count": split[1]})
+            except Exception as e:
+                print(str(e))
 
     print("first:", len(users))
 
@@ -56,23 +63,31 @@ if path.exists(database_name):
         users.append(sorted_retweeters[follower])
     print("second:", len(users))
     # Sort them by follower count, again
-    old_and_new_users_sorted = sorted(users, key=lambda x: x["follower_count"])
+    old_and_new_users_sorted = sorted(users, key=lambda x: int(x["follower_count"]), reverse=True)
 
     # Follow the top 395, picked from both the options stored in the db and the new ones from today
     follows = 0
-    for follower in range(0, ACCOUNTS_PER_DAY):
-        print("Creating friendship with {} whos follower count is {}"
-              .format(old_and_new_users_sorted[follower]["id"],
-                      old_and_new_users_sorted[follower]["follower_count"]))
-        follows = follows + old_and_new_users_sorted[follower]["follower_count"]
+    accounts_followed_today = 0
+    for follower in range(0, len(old_and_new_users_sorted)):
+        # print("Creating friendship with {} whos follower count is {}"
+        #       .format(old_and_new_users_sorted[follower]["id"],
+        #               old_and_new_users_sorted[follower]["follower_count"]))
+        follows = follows + int(old_and_new_users_sorted[follower]["follower_count"])
         # api.create_friendship(id=old_and_new_users_sorted[follower]["id"])  # TODO: enable this code for live ver
+        accounts_followed_today += 1
+        if accounts_followed_today > 394:
+            break
     follows_per_account = follows / ACCOUNTS_PER_DAY
 
     # Put the remaining users into the database
     with open(database_name, "w") as db:
+        print(ACCOUNTS_PER_DAY, len(old_and_new_users_sorted))
         for follower in (ACCOUNTS_PER_DAY, len(old_and_new_users_sorted)):
-            db.write(old_and_new_users_sorted[follower]["id"] + ";" +
-                     old_and_new_users_sorted[follower]["follower_count"])
+            print(follower)
+            exit()
+            # FIXME: IndexError: list index out of range
+            db.write(str(old_and_new_users_sorted[follower]["id"]) + ";" +
+                     str(old_and_new_users_sorted[follower]["follower_count"]))
             db.write(",")
 
 else:
@@ -90,13 +105,15 @@ else:
     with open(database_name, "w") as db:
         for follower in range(ACCOUNTS_PER_DAY, ACCOUNTS_PER_DAY * 2):
             # Format of an entry in the db is "id;follower_count". Entries are comma separated.
-            line = daily_scrape_of_retweeters[follower]["id"] + ";" + \
-                   daily_scrape_of_retweeters[follower["follower_count"]]
+            line = str(sorted_retweeters[follower]["id"]) + ";" + \
+                   str(sorted_retweeters[follower]["follower_count"])
             db.write(line)
             db.write(",")
 
 print("Done! Followed accounts with a total of {} followers, an average of {} followers per account."
-      .format(follows, round(follows_per_account, 3)))
+      .format(str(follows), str(round(follows_per_account, 3))))
 print("Closing in 5...")
 time.sleep(5)
 exit()
+
+# FIXME: what happens when that sicknasty list comprehension runs into the "" after the last "," in the txt db?
