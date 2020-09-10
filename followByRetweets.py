@@ -1,7 +1,10 @@
 import tweepy
 from os import path
+from datetime import datetime
+import pickle
 import time
-from datetime import date
+
+ACCOUNTS_PER_DAY = 395  # Easy to change to 400 if you really wanna push it to the limit
 
 with open("secrets.txt", "r") as keys:
     keys = keys.readlines()[0].split(",")
@@ -16,24 +19,90 @@ with open("secrets.txt", "r") as keys:
 auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
 auth.set_access_token(access_token, access_token_secret)
 
-api = tweepy.API(auth, wait_on_rate_limit=True)
+api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
 
 # Change this name to customize who the script is following!
 target_account = keys[4]
 print(keys[4])
 
-database_name = "people_who_retweeted_{}_database.txt".format(target_account)
+database_name = "people_who_retweeted_{}_database.pickle".format(target_account)
 
 tweets = api.user_timeline(target_account)
-retweeters = []
+daily_scrape_of_retweeters = []
 for tweet in tweets:
     print(tweet.text)
-    retweets_of_original_tweet = api.retweets(tweet.id)
+
+    retweets_of_original_tweet = api.retweets(tweet.id)  # retrieves ONLY 100 people who retweeted the tweet
     # For each retweet...
     for retweet in retweets_of_original_tweet:
-        # ...get the retweeter and...
-        user_who_retweeted = api.get_user(retweet.user.id).screen_name
-        retweeters.append([user_who_retweeted, retweet.user.followers_count])
+        now = datetime.now()
 
-for x in retweeters:
-    print(x)
+        current_time = now.strftime("%d/%m/%Y %H:%M:%S")
+        print("Current Time =", current_time, len(daily_scrape_of_retweeters))
+        # ...get 100 retweeters and...
+        retweeters = api.retweets(retweet.id)
+        print(retweeters)
+        time.sleep(10)
+        for user in retweeters:
+            # originally wrote: id_of_user_who_retweeted = api.get_user(user.id).id LOL
+            daily_scrape_of_retweeters.append({"id": user.id, "follower_count": user.followers_count})
+
+    if len(daily_scrape_of_retweeters) > 995:
+        break
+
+# sort retweeters list in place, ordered by most followers to least followers
+sorted_retweeters = sorted(daily_scrape_of_retweeters, key=lambda x: x["follower_count"])
+print(len(retweeters), len(sorted_retweeters))
+
+if path.exists(database_name):
+    # Extract the db from the txt file
+    with open(database_name, "rb") as db:
+        # FIXME: this variable name needs improvement. Ideally it reflects that users in this list are both:
+        # a) from the database and
+        # b) the top 400 from the day's scraping
+        unpickled_users = pickle.load(db)  # Pickle is magic
+
+    # Add the top 400 of the new accounts to the list from the database so they can compete for spots
+    for follower in range(0, ACCOUNTS_PER_DAY):
+        unpickled_users.append(sorted_retweeters[follower])
+
+    # Sort them by follower count, again
+    old_and_new_users_sorted = sorted(unpickled_users, key=lambda x: x["follower_count"])
+
+    # Follow the top 395, picked from both the options stored in the db and the new ones from today
+    follows = 0
+    for follower in range(0, ACCOUNTS_PER_DAY):
+        print("Creating friendship with {} whos follower count is {}"
+              .format(old_and_new_users_sorted[follower]["id"],
+                      old_and_new_users_sorted[follower]["follower_count"]))
+        follows = follows + old_and_new_users_sorted[follower]["follower_count"]
+        # api.create_friendship(id=old_and_new_users_sorted[follower]["id"])  # TODO: enable this code for live ver
+    follows_per_account = follows / ACCOUNTS_PER_DAY
+
+    # Put the remaining users into the database
+    with open(database_name, "wb") as db:
+        for follower in (ACCOUNTS_PER_DAY, len(old_and_new_users_sorted)):
+            pickle.dump(retweeters[follower], db, protocol=pickle.HIGHEST_PROTOCOL)
+
+else:
+    # Follow the top 395 accounts
+    follows = 0
+    print("OOPS:", len(sorted_retweeters), ACCOUNTS_PER_DAY)
+    for follower in range(0, ACCOUNTS_PER_DAY):
+        # print("Creating friendship with {} whos follower count is {}"
+        #       .format(sorted_retweeters[follower]["id"],
+        #               sorted_retweeters[follower]["follower_count"]))
+        follows = follows + sorted_retweeters[follower]["follower_count"]
+        # api.create_friendship(id=follower.id)  # TODO: enable this code for live ver
+    follows_per_account = follows / ACCOUNTS_PER_DAY
+
+    # Pickle ("save") the next 395 accounts into the database. Save 'em for next time!
+    with open(database_name, "wb") as db:
+        for follower in range(ACCOUNTS_PER_DAY, ACCOUNTS_PER_DAY * 2):
+            pickle.dump(retweeters[follower], db, protocol=pickle.HIGHEST_PROTOCOL)
+
+print("Done! Followed accounts with a total of {} followers, an average of {} followers per account.".format(follows,
+                                                                                                             follows_per_account))
+print("Closing in 5...")
+time.sleep(5)
+exit()

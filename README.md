@@ -18,6 +18,10 @@ If you have any problems, contact Roly Poly on twitter or via telegram.
 
 ## Notes
 
+### the 24 hour rate limit window
+
+You really do have to wait <b>at least 24 hours</b> before running either follower script again. If you follow 400 people between 7:00 am and 7:10 am on Monday, you'll be rate limited ("suspended") until 7:10 am on Tuesday.
+
 ### "Friendships/create" aka <i>follows</i>, daily limitation:
 
 https://developer.twitter.com/en/docs/twitter-api/v1/rate-limits
