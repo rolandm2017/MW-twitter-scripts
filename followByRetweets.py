@@ -31,9 +31,9 @@ daily_scrape_of_retweeters = []
 for tweet in tweets:
     print(tweet.text)
     retweets_of_original_tweet = api.retweets(tweet.id, 100)  # retrieves ONLY 100 people who retweeted the tweet
+    # print(len(retweets_of_original_tweet))
 
     # For each retweet...
-    print(len(retweets_of_original_tweet))
     for retweet in retweets_of_original_tweet:
         daily_scrape_of_retweeters.append({"id": retweet.user.id, "follower_count": retweet.user.followers_count})
 
@@ -42,7 +42,6 @@ for tweet in tweets:
 
 # sort retweeters list in place, ordered by most followers to least followers
 sorted_retweeters = sorted(daily_scrape_of_retweeters, key=lambda x: x["follower_count"], reverse=True)
-print(len(daily_scrape_of_retweeters), len(sorted_retweeters))
 
 if path.exists(database_name):
     # Extract the db from the txt file
@@ -56,23 +55,18 @@ if path.exists(database_name):
             except Exception as e:
                 print(str(e))
 
-    print("first:", len(users))
-
     # Add the top 400 of the new accounts to the list from the database so they can compete for spots
     for follower in range(0, ACCOUNTS_PER_DAY):
         users.append(sorted_retweeters[follower])
-    print("second:", len(users))
+
     # Sort them by follower count, again
-    old_and_new_users_sorted = sorted(users, key=lambda x: int(x["follower_count"]), reverse=True)
+    users_sorted = sorted(users, key=lambda x: int(x["follower_count"]), reverse=True)
 
     # Follow the top 395, picked from both the options stored in the db and the new ones from today
     follows = 0
     accounts_followed_today = 0
-    for follower in range(0, len(old_and_new_users_sorted)):
-        # print("Creating friendship with {} whos follower count is {}"
-        #       .format(old_and_new_users_sorted[follower]["id"],
-        #               old_and_new_users_sorted[follower]["follower_count"]))
-        follows = follows + int(old_and_new_users_sorted[follower]["follower_count"])
+    for follower in range(0, len(users_sorted)):
+        follows = follows + int(users_sorted[follower]["follower_count"])
         # api.create_friendship(id=old_and_new_users_sorted[follower]["id"])  # TODO: enable this code for live ver
         accounts_followed_today += 1
         if accounts_followed_today > 394:
@@ -80,23 +74,24 @@ if path.exists(database_name):
     follows_per_account = follows / ACCOUNTS_PER_DAY
 
     # Put the remaining users into the database
+    x = 0
     with open(database_name, "w") as db:
-        print(ACCOUNTS_PER_DAY, len(old_and_new_users_sorted))
-        for follower in (ACCOUNTS_PER_DAY, len(old_and_new_users_sorted)):
-            print(follower)
-            exit()
+        print("errors detected:", ACCOUNTS_PER_DAY, accounts_followed_today, len(users_sorted))
+        for follower in (accounts_followed_today, len(users_sorted)):
             # FIXME: IndexError: list index out of range
-            db.write(str(old_and_new_users_sorted[follower]["id"]) + ";" +
-                     str(old_and_new_users_sorted[follower]["follower_count"]))
-            db.write(",")
+            try:
+                db.write(str(users_sorted[follower]["id"]) + ";" +
+                         str(users_sorted[follower]["follower_count"]))
+                db.write(",")
+            except Exception as e:
+                print("HEY:", e, follower)
+            x += 1
+    print("look here is x {}, predictably it is the value of {} minus {} which is {}".format(x, users, accounts_followed_today, str(users - accounts_followed_today)))
 
 else:
     # Follow the top 395 accounts
     follows = 0
     for follower in range(0, ACCOUNTS_PER_DAY):
-        # print("Creating friendship with {} whos follower count is {}"
-        #       .format(sorted_retweeters[follower]["id"],
-        #               sorted_retweeters[follower]["follower_count"]))
         follows = follows + sorted_retweeters[follower]["follower_count"]
         # api.create_friendship(id=follower.id)  # TODO: enable this code for live ver
     follows_per_account = follows / ACCOUNTS_PER_DAY
