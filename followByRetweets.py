@@ -1,7 +1,6 @@
 import tweepy
 from os import path
 from datetime import datetime
-import pickle
 import time
 
 ACCOUNTS_PER_DAY = 395  # Easy to change to 400 if you really wanna push it to the limit
@@ -22,10 +21,10 @@ auth.set_access_token(access_token, access_token_secret)
 api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
 
 # Change this name to customize who the script is following!
-target_account = keys[4]
-print(keys[4])
+target_account = keys[4][:-1]
+print(target_account)
 
-database_name = "people_who_retweeted_{}_database.pickle".format(target_account)
+database_name = "people_who_retweeted_{}_database.txt".format(target_account)
 
 tweets = api.user_timeline(target_account)
 daily_scrape_of_retweeters = []
@@ -36,11 +35,7 @@ for tweet in tweets:
     # For each retweet...
     print(len(retweets_of_original_tweet))
     for retweet in retweets_of_original_tweet:
-        # now = datetime.now()
-        # current_time = now.strftime("%d/%m/%Y %H:%M:%S")
-        user = api.get_user(retweet.user.id)
-        print(user.id, user.followers_count)
-        daily_scrape_of_retweeters.append({"id": user.id, "follower_count": user.followers_count})
+        daily_scrape_of_retweeters.append({"id": retweet.user.id, "follower_count": retweet.user.followers_count})
 
     if len(daily_scrape_of_retweeters) > 995:
         break
@@ -51,18 +46,17 @@ print(len(daily_scrape_of_retweeters), len(sorted_retweeters))
 
 if path.exists(database_name):
     # Extract the db from the txt file
-    with open(database_name, "rb") as db:
-        # FIXME: this variable name needs improvement. Ideally it reflects that users in this list are both:
-        # a) from the database and
-        # b) the top 400 from the day's scraping
-        unpickled_users = pickle.load(db)  # Pickle is magic
+    with open(database_name, "r") as db:
+        users = [{"id": entry.split(";")[0], "follower_count": entry.split(";")[1]} for entry in db.read().split(",")]
+
+    print("first:", len(users))
 
     # Add the top 400 of the new accounts to the list from the database so they can compete for spots
     for follower in range(0, ACCOUNTS_PER_DAY):
-        unpickled_users.append(sorted_retweeters[follower])
-
+        users.append(sorted_retweeters[follower])
+    print("second:", len(users))
     # Sort them by follower count, again
-    old_and_new_users_sorted = sorted(unpickled_users, key=lambda x: x["follower_count"])
+    old_and_new_users_sorted = sorted(users, key=lambda x: x["follower_count"])
 
     # Follow the top 395, picked from both the options stored in the db and the new ones from today
     follows = 0
@@ -75,14 +69,15 @@ if path.exists(database_name):
     follows_per_account = follows / ACCOUNTS_PER_DAY
 
     # Put the remaining users into the database
-    with open(database_name, "wb") as db:
+    with open(database_name, "w") as db:
         for follower in (ACCOUNTS_PER_DAY, len(old_and_new_users_sorted)):
-            pickle.dump(old_and_new_users_sorted[follower], db, protocol=pickle.HIGHEST_PROTOCOL)
+            db.write(old_and_new_users_sorted[follower]["id"] + ";" +
+                     old_and_new_users_sorted[follower]["follower_count"])
+            db.write(",")
 
 else:
     # Follow the top 395 accounts
     follows = 0
-    print("OOPS:", len(sorted_retweeters), ACCOUNTS_PER_DAY)
     for follower in range(0, ACCOUNTS_PER_DAY):
         # print("Creating friendship with {} whos follower count is {}"
         #       .format(sorted_retweeters[follower]["id"],
@@ -91,13 +86,17 @@ else:
         # api.create_friendship(id=follower.id)  # TODO: enable this code for live ver
     follows_per_account = follows / ACCOUNTS_PER_DAY
 
-    # Pickle ("save") the next 395 accounts into the database. Save 'em for next time!
-    with open(database_name, "wb") as db:
+    # Save the next 395 accounts into the database. Discard the rest!
+    with open(database_name, "w") as db:
         for follower in range(ACCOUNTS_PER_DAY, ACCOUNTS_PER_DAY * 2):
-            pickle.dump(retweeters[follower], db, protocol=pickle.HIGHEST_PROTOCOL)
+            # Format of an entry in the db is "id;follower_count". Entries are comma separated.
+            line = daily_scrape_of_retweeters[follower]["id"] + ";" + \
+                   daily_scrape_of_retweeters[follower["follower_count"]]
+            db.write(line)
+            db.write(",")
 
-print("Done! Followed accounts with a total of {} followers, an average of {} followers per account.".format(follows,
-                                                                                                             follows_per_account))
+print("Done! Followed accounts with a total of {} followers, an average of {} followers per account."
+      .format(follows, round(follows_per_account, 3)))
 print("Closing in 5...")
 time.sleep(5)
 exit()
