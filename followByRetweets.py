@@ -12,6 +12,7 @@ with open("secrets.txt", "r") as keys:
     # Add your access token and secret here...
     access_token = keys[2]
     access_token_secret = keys[3]
+    target_account = keys[4][:-1]
 
 # TODO: Ask DK and OF if they want to run the script using python, or would prefer it as an .exe with userInput funcs
 
@@ -21,8 +22,8 @@ auth.set_access_token(access_token, access_token_secret)
 api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
 
 # Change this name to customize who the script is following!
-target_account = keys[4][:-1]
-print(target_account)
+
+print("Starting script. Will auto-follow accounts who *retweet* @%s" % target_account)
 
 database_name = "people_who_retweeted_{}_database.txt".format(target_account)
 
@@ -31,7 +32,6 @@ daily_scrape_of_retweeters = []
 for tweet in tweets:
     print(tweet.text)
     retweets_of_original_tweet = api.retweets(tweet.id, 100)  # retrieves ONLY 100 people who retweeted the tweet
-    # print(len(retweets_of_original_tweet))
 
     # For each retweet...
     for retweet in retweets_of_original_tweet:
@@ -67,7 +67,7 @@ if path.exists(database_name):
     accounts_followed_today = 0
     for follower in range(0, len(users_sorted)):
         follows = follows + int(users_sorted[follower]["follower_count"])
-        # api.create_friendship(id=old_and_new_users_sorted[follower]["id"])  # TODO: enable this code for live ver
+        api.create_friendship(id=users_sorted[follower]["id"])  # TODO: enable this code for live ver
         accounts_followed_today += 1
         if accounts_followed_today > 394:
             break
@@ -79,11 +79,8 @@ if path.exists(database_name):
     # Put the remaining users into the database
     x = 0
     with open(database_name, "w") as db:
-        # print("yayayayayay:", len(remaining_accounts))
         # time.sleep(10)
         for follower in range(0, len(remaining_accounts)):
-            # FIXME: IndexError: list index out of range
-            # print(follower)
             x += 1
             try:
                 db.write(str(remaining_accounts[follower]["id"]) + ";" +
@@ -92,14 +89,13 @@ if path.exists(database_name):
             except Exception as e:
                 print("error:", e)
                 time.sleep(5)
-    # print("look here is x {}, predictably it is the value of {} or smaller".format(x, len(remaining_accounts)))
 
 else:
     # Follow the top 395 accounts
     follows = 0
     for follower in range(0, ACCOUNTS_PER_DAY):
         follows = follows + sorted_retweeters[follower]["follower_count"]
-        # api.create_friendship(id=follower.id)  # TODO: enable this code for live ver
+        api.create_friendship(id=follower.id)  # TODO: enable this code for live ver
     follows_per_account = follows / ACCOUNTS_PER_DAY
 
     # Save the next 395 accounts into the database. Discard the rest!
@@ -117,4 +113,4 @@ print("Closing in 5...")
 time.sleep(5)
 exit()
 
-# FIXME: what happens when that sicknasty list comprehension runs into the "" after the last "," in the txt db?
+# FIXME: what happens when that list comprehension runs into the "" after the last "," in the txt db?

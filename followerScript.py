@@ -4,23 +4,24 @@ from os import path
 import time
 from datetime import date
 
-consumer_key = ''
-consumer_secret = ''
-# Add your access token and secret here...
-access_token = ''
-access_token_secret = ''
-
-# TODO: Ask DK and OF if they want to run the script using python, or would prefer it as an .exe with userInput funcs
+with open("secrets.txt", "r") as keys:
+    keys = keys.readlines()[0].split(",")
+    consumer_key = keys[0]
+    consumer_secret = keys[1]
+    # Add your access token and secret here...
+    access_token = keys[2]
+    access_token_secret = keys[3]
+    target_account = keys[4][:-1]
 
 auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
 auth.set_access_token(access_token, access_token_secret)
 
 api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
 
-# Change this name to customize who the script is following!
-target_account = ""
-
 database_name = "follower_script_database_{}.txt".format(target_account)
+
+print("Starting script. Will auto-follow accounts who follow @%s" % target_account)
+time.sleep(5)
 
 
 def get_followers_from_db(db_name):
@@ -139,7 +140,6 @@ else:
     target_followers = []
     for page in tweepy.Cursor(api.followers_ids, screen_name=target_account).pages():
         target_followers.extend(page)
-        break
         time.sleep(60)  # TODO: uncomment this code, remove the break statement
 
     # Save the list to a .txt file so the user can avoid getting followers every time the script is run
@@ -154,7 +154,7 @@ else:
     remainder = remove_accounts_from_database(successes_and_report[0], database_name)
     convert_report_to_txt(successes_and_report[1], target_account)
 
-print("Done for the day. {} accounts remain on the to-follow list. Exiting in 5.....".format(remainder))
+print("Done for the day. {} accounts remain on the to-follow list. Preparing to exit. 5.....".format(remainder))
 # exit()  # todo: remove this exit() when finished debug
 time.sleep(2)
 print("4....")
@@ -163,6 +163,6 @@ print("3...")
 time.sleep(1)
 print("2..")
 time.sleep(1)
-print("Thanks for using!")
-time.sleep(2)
+print("Thanks for using! Close the program anytime. ")
+time.sleep(60)
 exit()
